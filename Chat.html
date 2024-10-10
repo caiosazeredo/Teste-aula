@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Assistente IA com Azure</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #chat-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        #messages {
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin-bottom: 10px;
+        }
+        .message.user {
+            text-align: right;
+            color: blue;
+        }
+        .message.bot {
+            text-align: left;
+            color: green;
+        }
+        #user-input {
+            width: calc(100% - 110px);
+            padding: 5px;
+        }
+        #send-btn {
+            width: 100px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="chat-container">
+    <h3>Chat Assistente de IA com Azure</h3>
+    <div id="messages"></div>
+    <input type="text" id="user-input" placeholder="Digite sua mensagem...">
+    <button id="send-btn">Enviar</button>
+</div>
+
+<script>
+    const jsonData = {
+        "systemPrompt": "Você é um assistente de IA que ajuda as pessoas a encontrar informações.",
+        "fewShotExamples": [{
+            "chatbotResponse": "Para adicionar um novo instrumento, forneça os seguintes dados: nome do instrumento, tipo (corda, percussão, sopro, etc.), preço e quantidade disponível. O sistema irá armazenar essas informações para futuras vendas.",
+            "userInput": "Como posso adicionar um novo instrumento ao sistema?"
+        }],
+        "chatParameters": {
+            "deploymentName": "gpt-35-turbo",
+            "maxResponseLength": 4000,
+            "temperature": 0.7,
+            "topProbablities": 0.95,
+            "stopSequences": [],
+            "pastMessagesToInclude": 10,
+            "frequencyPenalty": 0,
+            "presencePenalty": 0
+        }
+    };
+
+    const chatContainer = document.getElementById('messages');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    // Função para adicionar mensagens ao chat
+    function addMessage(message, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', type);
+        messageDiv.textContent = message;
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Inicialização do assistente
+    addMessage(jsonData.systemPrompt, 'bot');
+
+    // Exemplo few-shot
+    jsonData.fewShotExamples.forEach(example => {
+        addMessage(`Usuário: ${example.userInput}`, 'user');
+        addMessage(`Assistente: ${example.chatbotResponse}`, 'bot');
+    });
+
+    // Função para chamar a API da Azure OpenAI
+    async function callAzureOpenAI(userText) {
+        const url = 'https://alexa-m20y9agv-francecentral.openai.azure.com/openai/deployments/gpt-35-turbo/chat/completions?api-version=2023-03-15-preview';
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': '5f74eb8579e44d3db55d9548a13d7eb1'
+            },
+            body: JSON.stringify({
+                "messages": [{"role": "user", "content": userText}],
+                "max_tokens": 1000,
+                "temperature": 0.7,
+                "top_p": 0.95,
+                "frequency_penalty": 0,
+                "presence_penalty": 0
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } else {
+            return "Erro ao chamar a API da Azure.";
+        }
+    }
+
+    // Enviar nova mensagem
+    sendBtn.addEventListener('click', async () => {
+        const userText = userInput.value;
+        if (userText.trim() !== "") {
+            addMessage(userText, 'user');
+            userInput.value = '';
+
+            // Chamada à API da Azure OpenAI
+            const botResponse = await callAzureOpenAI(userText);
+            addMessage(botResponse, 'bot');
+        }
+    });
+</script>
+
+</body>
+</html>
